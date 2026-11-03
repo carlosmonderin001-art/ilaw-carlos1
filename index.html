@@ -1,0 +1,1398 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ILAW Lesson Plan AI Generator - DepEd Aligned</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            },
+            ilaw: {
+              intentions: '#dbeafe',
+              experiences: '#dcfce7',
+              assessment: '#f3e8ff',
+              waysforward: '#ffedd5',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            serif: ['Merriweather', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Font Awesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Merriweather:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- docx Library for Word Export -->
+  <script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+
+  <style>
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #f1f5f9;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    /* Editable highlight when inline edit mode is active */
+    .editable-active [contenteditable="true"] {
+      outline: 2px dashed #3b82f6;
+      outline-offset: -2px;
+      background-color: rgba(239, 246, 255, 0.6);
+      transition: all 0.2s ease;
+    }
+    .editable-active [contenteditable="true"]:focus {
+      outline: 2px solid #2563eb;
+      background-color: #ffffff;
+    }
+
+    /* Print styles for A4 paper layout */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printArea, #printArea * {
+        visibility: visible;
+      }
+      #printArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 0;
+        box-shadow: none !important;
+        border: none !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="h-full font-sans antialiased text-slate-800 flex flex-col">
+
+  <!-- TOP BAR / HEADER -->
+  <header class="bg-slate-900 text-white border-b border-slate-800 shrink-0 sticky top-0 z-30 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      
+      <!-- Logo & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="bg-gradient-to-tr from-amber-400 via-orange-500 to-yellow-300 p-2.5 rounded-xl shadow-lg flex items-center justify-center text-slate-950 font-bold text-xl">
+          <i class="fa-solid fa-lightbulb text-amber-950 text-xl"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="font-extrabold text-lg tracking-tight text-white">ILAW Lesson Plan AI</h1>
+            <span class="bg-amber-400/20 text-amber-300 text-xs font-semibold px-2 py-0.5 rounded border border-amber-400/30">DepEd Aligned</span>
+          </div>
+          <p class="text-xs text-slate-400 hidden sm:block">Intentions • Learning Experiences • Assessment • Ways Forward</p>
+        </div>
+      </div>
+
+      <!-- Quick Preset Selector & Actions -->
+      <div class="flex items-center space-x-3">
+        <!-- Preset Dropdown -->
+        <div class="relative">
+          <select id="presetSelector" onchange="loadPreset(this.value)" class="bg-slate-800 text-xs text-slate-200 border border-slate-700 rounded-lg px-3 py-2 pr-8 focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer hover:bg-slate-750 transition">
+            <option value="" disabled selected>⚡ Sample Subject Presets</option>
+            <option value="science8">Grade 8 Science - Photosynthesis</option>
+            <option value="math10">Grade 10 Math - Quadratic Equations</option>
+            <option value="english7">Grade 7 English - Active & Passive Voice</option>
+            <option value="esp5">Grade 5 EsP - Paggalang sa Opinyon</option>
+            <option value="ap9">Grade 9 AP - Konsepto ng Suplay</option>
+          </select>
+        </div>
+
+        <!-- API Key Status Toggle -->
+        <button onclick="toggleApiKeyModal()" class="flex items-center space-x-1.5 text-xs bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg transition" title="Set Gemini API Key">
+          <i class="fa-solid fa-key text-amber-400"></i>
+          <span class="hidden md:inline">API Key</span>
+          <span id="apiKeyBadge" class="w-2 h-2 rounded-full bg-emerald-400 ml-1"></span>
+        </button>
+
+        <button onclick="resetForm()" class="text-xs text-slate-400 hover:text-white px-2 py-1.5 rounded transition" title="Clear inputs">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN SPLIT SCREEN CONTAINER -->
+  <main class="flex-1 flex flex-col md:flex-row overflow-hidden bg-slate-100">
+
+    <!-- LEFT PANEL: INPUT FORM (38% Desktop Width) -->
+    <aside class="w-full md:w-[420px] lg:w-[460px] xl:w-[500px] bg-slate-900 border-r border-slate-800 flex flex-col shrink-0 h-auto md:h-full overflow-y-auto shadow-inner">
+      
+      <form id="ilawForm" onsubmit="handleGenerate(event)" class="p-4 sm:p-5 space-y-5 text-slate-200">
+        
+        <!-- SECTION 1: HEADER & BASIC DETAILS -->
+        <div class="bg-slate-800/80 rounded-xl p-4 border border-slate-700/60 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-xs font-bold uppercase tracking-wider text-blue-400 flex items-center gap-2">
+              <i class="fa-solid fa-school text-blue-400"></i> School & Header Info
+            </h2>
+            <span class="text-[10px] text-slate-400">DepEd Format</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 text-xs">
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-slate-400 font-medium mb-1">School Name</label>
+              <input type="text" id="schoolName" value="Mabini National High School" required class="w-full bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none">
+            </div>
+
+            <div class="col-span-2 sm:col-span-1">
+              <label class="block text-slate-400 font-medium mb-1">Teacher Name</label>
+              <input type="text" id="teacherName" value="Maria L. Santos, Master Teacher I" required class="w-full bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none">
+            </div>
+
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Grade Level</label>
+              <select id="gradeLevel" class="w-full bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                <option value="Grade 1">Grade 1</option>
+                <option value="Grade 2">Grade 2</option>
+                <option value="Grade 3">Grade 3</option>
+                <option value="Grade 4">Grade 4</option>
+                <option value="Grade 5">Grade 5</option>
+                <option value="Grade 6">Grade 6</option>
+                <option value="Grade 7">Grade 7</option>
+                <option value="Grade 8" selected>Grade 8</option>
+                <option value="Grade 9">Grade 9</option>
+                <option value="Grade 10">Grade 10</option>
+                <option value="Grade 11">Grade 11 (SHS)</option>
+                <option value="Grade 12">Grade 12 (SHS)</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Learning Area</label>
+              <select id="subject" class="w-full bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                <option value="Science" selected>Science</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="English">English</option>
+                <option value="Filipino">Filipino</option>
+                <option value="Araling Panlipunan">Araling Panlipunan (AP)</option>
+                <option value="Edukasyon sa Pagpapakatao">EsP / Values</option>
+                <option value="MAPEH">MAPEH</option>
+                <option value="TLE / TVL">TLE / TVL</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Quarter & Week</label>
+              <input type="text" id="quarterWeek" value="Quarter 1 - Week 3" required class="w-full bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none">
+            </div>
+
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Duration</label>
+              <input type="text" id="duration" value="60 Minutes (1 Session)" required class="w-full bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none">
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: TOPIC & INTENTIONS INPUT -->
+        <div class="bg-slate-800/80 rounded-xl p-4 border border-slate-700/60 shadow-sm space-y-3">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+            <i class="fa-solid fa-bullseye text-amber-400"></i> Topic & Intentions (Layunin)
+          </h2>
+
+          <div class="text-xs space-y-2.5">
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Lesson Topic / Title *</label>
+              <input type="text" id="topic" value="Photosynthesis: Plant Food Making Process" required placeholder="e.g. Photosynthesis and Cellular Respiration" class="w-full bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 outline-none">
+            </div>
+
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Learning Competency / Code *</label>
+              <textarea id="learningCompetency" rows="2" placeholder="e.g. Differentiate basic features of photosynthesis and respiration (S9LT-Ig-j-31)" class="w-full bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 focus:ring-1 focus:ring-amber-500 focus:border-amber-500 outline-none resize-none">S8LT-IVf-16: Differentiate the basic features of photosynthesis and cell respiration, and describe how plants transform light energy into chemical energy.</textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-slate-400 font-medium mb-1">Content Standard</label>
+                <input type="text" id="contentStandard" value="Demonstrate understanding of plant cell structures involved in energy transformation." class="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-slate-100 text-[11px] outline-none">
+              </div>
+              <div>
+                <label class="block text-slate-400 font-medium mb-1">Performance Standard</label>
+                <input type="text" id="performanceStandard" value="Design a visual diagram illustrating the inputs and outputs of light reaction." class="w-full bg-slate-900 border border-slate-700 rounded-md px-2 py-1 text-slate-100 text-[11px] outline-none">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 3: LEARNER CONTEXT & PEDAGOGY -->
+        <div class="bg-slate-800/80 rounded-xl p-4 border border-slate-700/60 shadow-sm space-y-3">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+            <i class="fa-solid fa-users text-emerald-400"></i> Context & Pedagogical Approach
+          </h2>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Learner Profile Context</label>
+              <select id="learnerContext" class="w-full bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 focus:ring-1 focus:ring-emerald-500 outline-none">
+                <option value="Mixed Readiness & Visual Learners" selected>Mixed Readiness & Visual Learners</option>
+                <option value="Scaffolding Needed for Reading">Scaffolding Needed for Reading</option>
+                <option value="Hands-On & Group Oriented">Hands-On & Group Oriented</option>
+                <option value="Fast Learners & High Engagement">Fast Learners & High Engagement</option>
+                <option value="ICT-Integrated & Tech-Enabled">ICT-Integrated & Tech-Enabled</option>
+              </select>
+            </div>
+
+            <div>
+              <label class="block text-slate-400 font-medium mb-1">Teaching Approach</label>
+              <select id="teachingStrategy" class="w-full bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-slate-100 focus:ring-1 focus:ring-emerald-500 outline-none">
+                <option value="Gradual Release (I Do, We Do, You Do)" selected>Gradual Release (I Do, We Do, You Do)</option>
+                <option value="7Es Inquiry-Based Model">7Es Inquiry-Based Model</option>
+                <option value="4As Method (Activity, Analysis, Abstraction, Application)">4As Method (DepEd Standard)</option>
+                <option value="Differentiated Instruction">Differentiated Instruction Tiers</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- GENERATE BUTTON & ACTIONS -->
+        <div class="pt-2 space-y-2">
+          <button type="submit" id="generateBtn" class="w-full bg-gradient-to-r from-blue-600 via-indigo-600 to-amber-500 hover:from-blue-500 hover:to-amber-400 text-white font-bold py-3 px-4 rounded-xl shadow-lg hover:shadow-xl transition transform active:scale-[0.99] flex items-center justify-center space-x-2 text-sm cursor-pointer">
+            <i id="btnIcon" class="fa-solid fa-wand-magic-sparkles"></i>
+            <span id="btnText">Generate ILAW Lesson Plan</span>
+          </button>
+
+          <div class="flex items-center justify-between text-[11px] text-slate-400 px-1">
+            <span><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Gemini 3 AI Powered</span>
+            <span id="apiStatusText" class="text-emerald-400 font-medium">Ready (Auto Engine Active)</span>
+          </div>
+        </div>
+
+      </form>
+    </aside>
+
+    <!-- RIGHT PANEL: PREVIEW & EXPORT ACTIONS (58% Desktop Width) -->
+    <section class="flex-1 flex flex-col h-full overflow-hidden bg-slate-200">
+      
+      <!-- ACTION TOOLBAR -->
+      <div class="bg-white border-b border-slate-300 px-4 py-3 shrink-0 flex flex-wrap items-center justify-between gap-3 shadow-sm z-10">
+        
+        <!-- Status / View Modes -->
+        <div class="flex items-center space-x-2">
+          <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 mr-1.5 animate-pulse"></span> ILAW Matrix Ready
+          </span>
+
+          <button onclick="toggleQuickEdit()" id="quickEditBtn" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 bg-slate-50 hover:bg-slate-100 text-slate-700 font-medium transition flex items-center gap-1.5">
+            <i class="fa-solid fa-pen-to-square text-blue-600"></i>
+            <span id="quickEditLabel">Enable Inline Edit</span>
+          </button>
+        </div>
+
+        <!-- Export Buttons -->
+        <div class="flex items-center space-x-2">
+          
+          <button onclick="exportToWord()" class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-file-word text-sm"></i>
+            <span>Download .DOCX</span>
+          </button>
+
+          <button onclick="printDocument()" class="bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold px-3.5 py-2 rounded-lg shadow-sm transition flex items-center gap-1.5 cursor-pointer">
+            <i class="fa-solid fa-print text-sm"></i>
+            <span>Print / PDF</span>
+          </button>
+
+          <button onclick="copyDocumentText()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5" title="Copy Raw Text">
+            <i class="fa-regular fa-copy"></i>
+            <span class="hidden sm:inline">Copy Text</span>
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- DOCUMENT PREVIEW CONTAINER -->
+      <div class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 flex justify-center">
+        
+        <!-- SHEET CONTAINER (Mimics Official Printed Lesson Log Paper) -->
+        <div id="printArea" class="w-full max-w-4xl bg-white shadow-2xl rounded-sm border border-slate-300 p-6 sm:p-10 text-slate-900 font-sans transition-all duration-300 min-h-[900px] flex flex-col justify-between">
+          
+          <div>
+            <!-- DEPED FORMAL HEADER -->
+            <div class="text-center border-b-2 border-slate-900 pb-4 mb-5 space-y-1">
+              <div class="text-xs uppercase tracking-widest font-bold text-slate-600">Republic of the Philippines • Department of Education</div>
+              <h2 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight font-serif uppercase">ILAW LESSON PLAN MATRIX</h2>
+              <p class="text-xs text-slate-500 font-medium italic">Intentions, Learning Experiences, Assessment, & Ways Forward Framework</p>
+            </div>
+
+            <!-- HEADER INFORMATION GRID TABLE -->
+            <div class="overflow-x-auto mb-6">
+              <table class="w-full border-collapse text-xs border border-slate-900">
+                <tbody>
+                  <tr class="bg-slate-100">
+                    <td class="border border-slate-900 p-2 font-bold w-1/6 bg-slate-200">School:</td>
+                    <td id="prevSchool" class="border border-slate-900 p-2 font-medium w-2/6">Mabini National High School</td>
+                    <td class="border border-slate-900 p-2 font-bold w-1/6 bg-slate-200">Grade Level:</td>
+                    <td id="prevGrade" class="border border-slate-900 p-2 font-medium w-2/6">Grade 8</td>
+                  </tr>
+                  <tr>
+                    <td class="border border-slate-900 p-2 font-bold bg-slate-200">Teacher:</td>
+                    <td id="prevTeacher" class="border border-slate-900 p-2 font-medium">Maria L. Santos, Master Teacher I</td>
+                    <td class="border border-slate-900 p-2 font-bold bg-slate-200">Learning Area:</td>
+                    <td id="prevSubject" class="border border-slate-900 p-2 font-medium">Science</td>
+                  </tr>
+                  <tr class="bg-slate-100">
+                    <td class="border border-slate-900 p-2 font-bold bg-slate-200">Quarter/Week:</td>
+                    <td id="prevQuarter" class="border border-slate-900 p-2 font-medium">Quarter 1 - Week 3</td>
+                    <td class="border border-slate-900 p-2 font-bold bg-slate-200">Duration:</td>
+                    <td id="prevDuration" class="border border-slate-900 p-2 font-medium">60 Minutes</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- TOPIC HEADER BOX -->
+            <div class="bg-amber-50 border-2 border-amber-400 p-3.5 rounded-lg mb-6 shadow-sm">
+              <div class="text-[11px] font-bold text-amber-800 uppercase tracking-wider">Lesson Topic</div>
+              <div id="prevTopic" class="text-base sm:text-lg font-bold text-slate-900 font-serif">Photosynthesis: Plant Food Making Process</div>
+            </div>
+
+            <!-- ILAW MAIN MATRIX TABLE -->
+            <div id="planDocumentContent" class="space-y-6">
+              
+              <!-- SECTION I: INTENTIONS -->
+              <div class="border-2 border-blue-600 rounded-lg overflow-hidden shadow-sm">
+                <div class="bg-blue-600 text-white px-4 py-2 font-bold text-sm uppercase tracking-wide flex items-center justify-between">
+                  <span><i class="fa-solid fa-bullseye mr-2"></i> I. INTENTIONS (Layunin)</span>
+                  <span class="text-xs bg-blue-700 px-2 py-0.5 rounded text-blue-100 font-normal">What learners should know, feel & do</span>
+                </div>
+                
+                <div class="p-4 bg-white space-y-3 text-xs sm:text-sm">
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pb-3 border-b border-slate-200">
+                    <div>
+                      <span class="font-bold text-slate-700 block text-xs uppercase text-blue-900">Content Standard:</span>
+                      <p id="prevContentStandard" class="text-slate-800 mt-1">Demonstrate understanding of plant cell structures involved in energy transformation.</p>
+                    </div>
+                    <div>
+                      <span class="font-bold text-slate-700 block text-xs uppercase text-blue-900">Performance Standard:</span>
+                      <p id="prevPerformanceStandard" class="text-slate-800 mt-1">Design a visual diagram illustrating the inputs and outputs of light reaction.</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span class="font-bold text-slate-700 block text-xs uppercase text-blue-900">Learning Competency:</span>
+                    <p id="prevCompetency" class="text-slate-800 font-medium mt-1">S8LT-IVf-16: Differentiate the basic features of photosynthesis and cell respiration, and describe how plants transform light energy into chemical energy.</p>
+                  </div>
+
+                  <!-- Unpacked Objectives KSA -->
+                  <div class="bg-blue-50/70 p-3 rounded-md border border-blue-200 space-y-2">
+                    <span class="font-bold text-blue-950 block text-xs uppercase">Unpacked Learning Objectives (KSA):</span>
+                    <ul class="space-y-1.5 list-disc list-inside text-slate-800 text-xs sm:text-sm">
+                      <li><strong>Knowledge (K):</strong> <span id="prevK">Explain the role of chlorophyll, sunlight, water, and carbon dioxide in photosynthesis.</span></li>
+                      <li><strong>Skills (S):</strong> <span id="prevS">Construct a balanced chemical reaction equation diagram for photosynthesis in a group setup.</span></li>
+                      <li><strong>Attitude/Values (A):</strong> <span id="prevA">Demonstrate stewardship for green plants and environmental conservation.</span></li>
+                    </ul>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- SECTION II: LEARNING EXPERIENCES -->
+              <div class="border-2 border-emerald-600 rounded-lg overflow-hidden shadow-sm">
+                <div class="bg-emerald-600 text-white px-4 py-2 font-bold text-sm uppercase tracking-wide flex items-center justify-between">
+                  <span><i class="fa-solid fa-graduation-cap mr-2"></i> II. LEARNING EXPERIENCES (Pagkakasunod-sunod ng Aralin)</span>
+                  <span class="text-xs bg-emerald-700 px-2 py-0.5 rounded text-emerald-100 font-normal">Gradual Release & Differentiated Flow</span>
+                </div>
+
+                <div class="p-4 bg-white space-y-4 text-xs sm:text-sm">
+                  
+                  <!-- Pre-Lesson Hook -->
+                  <div class="border-l-4 border-emerald-500 pl-3 py-1">
+                    <span class="font-bold text-emerald-900 block text-xs uppercase">1. Pre-Lesson Hook & Motivation (5 mins):</span>
+                    <p id="prevHook" class="text-slate-800 mt-1">Present two potted plants—one healthy green plant kept in sunlight, and one wilted yellow plant kept in a dark closet for 5 days. Ask: "What makes the first plant thrive and create its own nourishment?"</p>
+                  </div>
+
+                  <!-- Gradual Release Instructional Flow -->
+                  <div class="space-y-2 bg-emerald-50/50 p-3.5 rounded-md border border-emerald-200">
+                    <span class="font-bold text-emerald-950 block text-xs uppercase">2. Gradual Release Instructional Flow:</span>
+                    
+                    <div class="space-y-2 pl-2">
+                      <div>
+                        <span class="font-bold text-emerald-800 text-xs">Direct Instruction ("I DO"):</span>
+                        <p id="prevIDo" class="text-slate-800 mt-0.5">Teacher presents an interactive diagram of the chloroplast, showing how sunlight splits water (H2O) and converts CO2 into glucose (C6H2O6) and Oxygen (O2).</p>
+                      </div>
+
+                      <div>
+                        <span class="font-bold text-emerald-800 text-xs">Guided Practice ("WE DO"):</span>
+                        <p id="prevWeDo" class="text-slate-800 mt-0.5">Students work in pairs to arrange word-card formula pieces (Sunlight + Water + CO2 → Glucose + Oxygen) into the correct sequence on their tables.</p>
+                      </div>
+
+                      <div>
+                        <span class="font-bold text-emerald-800 text-xs">Independent Practice ("YOU DO"):</span>
+                        <p id="prevYouDo" class="text-slate-800 mt-0.5">Learners individually complete a flow chart tracing how light energy transforms into chemical energy in plant leaves.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Differentiated Group Learning Activities -->
+                  <div>
+                    <span class="font-bold text-emerald-900 block text-xs uppercase mb-1.5">3. Differentiated Group Learning Activities:</span>
+                    <div id="prevDiffGroup" class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <div class="bg-slate-50 p-2.5 rounded border border-slate-300">
+                        <span class="font-bold text-slate-900 block border-b pb-1 mb-1">Group A (Support Tier)</span>
+                        <p class="text-slate-700">Fill in missing key terms on a guided diagram of photosynthesis with vocabulary helper cards.</p>
+                      </div>
+                      <div class="bg-slate-50 p-2.5 rounded border border-slate-300">
+                        <span class="font-bold text-slate-900 block border-b pb-1 mb-1">Group B (Core Tier)</span>
+                        <p class="text-slate-700">Construct a complete poster diagram showing light-dependent and light-independent reactions.</p>
+                      </div>
+                      <div class="bg-slate-50 p-2.5 rounded border border-slate-300">
+                        <span class="font-bold text-slate-900 block border-b pb-1 mb-1">Group C (Extension Tier)</span>
+                        <p class="text-slate-700">Predict the environmental impact if deforestation drastically cuts local plant photosynthesis rates.</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Resources & Materials -->
+                  <div class="text-xs text-slate-600 border-t pt-2">
+                    <strong>Learning Resources & Materials:</strong> <span id="prevResources">Potted plant specimens, Chloroplast visual diagram, Vocabulary flashcards, Activity worksheets, Manila paper & markers.</span>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- SECTION III: ASSESSMENT -->
+              <div class="border-2 border-purple-600 rounded-lg overflow-hidden shadow-sm">
+                <div class="bg-purple-600 text-white px-4 py-2 font-bold text-sm uppercase tracking-wide flex items-center justify-between">
+                  <span><i class="fa-solid fa-clipboard-check mr-2"></i> III. ASSESSMENT (Pagtataya)</span>
+                  <span class="text-xs bg-purple-700 px-2 py-0.5 rounded text-purple-100 font-normal">Formative Checks & HOTS</span>
+                </div>
+
+                <div class="p-4 bg-white space-y-3 text-xs sm:text-sm">
+                  
+                  <div>
+                    <span class="font-bold text-purple-900 block text-xs uppercase">Formative Assessment Check:</span>
+                    <p id="prevFormativeCheck" class="text-slate-800 mt-1">5-item short check quiz & exit ticket: "Write the overall chemical equation for photosynthesis and name the primary pigment that absorbs light."</p>
+                  </div>
+
+                  <!-- HOTS Questions -->
+                  <div class="bg-purple-50 p-3 rounded-md border border-purple-200">
+                    <span class="font-bold text-purple-950 block text-xs uppercase mb-1">Higher-Order Thinking Skills (HOTS) Questions:</span>
+                    <ol id="prevHots" class="list-decimal list-inside space-y-1 text-slate-800 text-xs sm:text-sm">
+                      <li>Why would placing a aquatic plant under green-filtered light slow down oxygen bubble production?</li>
+                      <li>How does deforestation directly affect global oxygen supply through the lens of cellular photosynthesis?</li>
+                    </ol>
+                  </div>
+
+                  <!-- Evaluation Criteria / Rubric -->
+                  <div>
+                    <span class="font-bold text-purple-900 block text-xs uppercase">Evaluation Criteria & Rubric:</span>
+                    <p id="prevRubric" class="text-slate-800 text-xs mt-1">Diagram Accuracy (40%), Scientific Explanation (30%), Group Collaboration (20%), Neatness & Timeliness (10%).</p>
+                  </div>
+
+                </div>
+              </div>
+
+              <!-- SECTION IV: WAYS FORWARD -->
+              <div class="border-2 border-orange-500 rounded-lg overflow-hidden shadow-sm">
+                <div class="bg-orange-500 text-white px-4 py-2 font-bold text-sm uppercase tracking-wide flex items-center justify-between">
+                  <span><i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> IV. WAYS FORWARD (Pagninilay at Pagpapalawig)</span>
+                  <span class="text-xs bg-orange-600 px-2 py-0.5 rounded text-orange-100 font-normal">Synthesis & Intervention</span>
+                </div>
+
+                <div class="p-4 bg-white space-y-3 text-xs sm:text-sm">
+                  
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="bg-orange-50/60 p-3 rounded border border-orange-200">
+                      <span class="font-bold text-orange-950 block text-xs uppercase">Lesson Synthesis / Generalization:</span>
+                      <p id="prevSynthesis" class="text-slate-800 mt-1">Learners summarize in 3 key sentences: Plants convert radiant solar energy into chemical energy stored in sugar, releasing vital oxygen as a byproduct.</p>
+                    </div>
+
+                    <div class="bg-orange-50/60 p-3 rounded border border-orange-200">
+                      <span class="font-bold text-orange-950 block text-xs uppercase">Teacher & Student Reflection:</span>
+                      <p id="prevReflection" class="text-slate-800 mt-1">90% of learners achieved mastery in diagram identification; 10% require additional guided practice on chemical equations.</p>
+                    </div>
+                  </div>
+
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2">
+                    <div>
+                      <span class="font-bold text-slate-700 block text-xs uppercase text-orange-900">Remediation Task (Interbensyon):</span>
+                      <p id="prevRemediation" class="text-slate-800 mt-1">Provide guided matching sheet connecting inputs (Water, Light, CO2) with outputs (Glucose, O2) for students below 75% score.</p>
+                    </div>
+
+                    <div>
+                      <span class="font-bold text-slate-700 block text-xs uppercase text-orange-900">Enrichment / Extension (Pagpapalawig):</span>
+                      <p id="prevEnrichment" class="text-slate-800 mt-1">Research home indoor plants that are highly effective at absorbing indoor air pollutants overnight.</p>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- FOOTER SIGNATURE SECTION -->
+          <div class="mt-10 pt-6 border-t border-slate-300 grid grid-cols-2 gap-8 text-xs text-slate-700 text-center">
+            <div>
+              <p class="mb-8">Prepared by:</p>
+              <p id="sigTeacher" class="font-bold underline text-slate-900 uppercase">Maria L. Santos, Master Teacher I</p>
+              <p class="text-[11px] text-slate-500">Subject Teacher</p>
+            </div>
+            <div>
+              <p class="mb-8">Checked & Approved by:</p>
+              <p class="font-bold underline text-slate-900 uppercase">Dr. Roberto G. Dela Cruz</p>
+              <p class="text-[11px] text-slate-500">School Principal / Department Head</p>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- API KEY MODAL DIALOG -->
+  <div id="apiKeyModal" class="fixed inset-0 bg-slate-950/70 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 max-w-md w-full shadow-2xl text-slate-100 space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-lg text-white flex items-center gap-2">
+          <i class="fa-solid fa-key text-amber-400"></i> Gemini API Settings
+        </h3>
+        <button onclick="toggleApiKeyModal()" class="text-slate-400 hover:text-white">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <p class="text-xs text-slate-300 leading-relaxed">
+        Enter your Google Gemini API Key to unlock real-time custom AI generation. If no key is entered, the application runs using our rich client-side DepEd lesson plan engine.
+      </p>
+
+      <div>
+        <label class="block text-xs font-semibold text-slate-300 mb-1">Google AI Studio API Key</label>
+        <div class="relative">
+          <input type="password" id="geminiApiKeyInput" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-100 focus:ring-2 focus:ring-amber-500 outline-none pr-10">
+          <button type="button" onclick="toggleApiKeyVisibility()" class="absolute right-3 top-2.5 text-slate-400 hover:text-white text-xs">
+            <i id="eyeIcon" class="fa-solid fa-eye"></i>
+          </button>
+        </div>
+      </div>
+
+      <div class="bg-slate-800 p-3 rounded-lg text-[11px] text-slate-400 space-y-1">
+        <p><i class="fa-solid fa-shield-halved text-emerald-400 mr-1"></i> Your API Key is saved locally in your browser storage.</p>
+        <p><i class="fa-solid fa-bolt text-amber-400 mr-1"></i> Model used: <code class="text-amber-300">gemini-3-flash-preview</code></p>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2">
+        <button onclick="saveApiKey()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-4 py-2 rounded-lg text-xs transition">
+          Save API Key
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    // PRESET DATA TEMPLATES FOR QUICK LOADING
+    const PRESETS = {
+      science8: {
+        schoolName: "Mabini National High School",
+        teacherName: "Maria L. Santos, Master Teacher I",
+        gradeLevel: "Grade 8",
+        subject: "Science",
+        quarterWeek: "Quarter 1 - Week 3",
+        duration: "60 Minutes",
+        topic: "Photosynthesis: Plant Food Making Process",
+        learningCompetency: "S8LT-IVf-16: Differentiate the basic features of photosynthesis and cell respiration, and describe how plants transform light energy into chemical energy.",
+        contentStandard: "Demonstrate understanding of plant cell structures involved in energy transformation.",
+        performanceStandard: "Design a visual diagram illustrating the inputs and outputs of light reaction.",
+        learnerContext: "Mixed Readiness & Visual Learners",
+        teachingStrategy: "Gradual Release (I Do, We Do, You Do)",
+        intentions: {
+          knowledge: "Explain the role of chlorophyll, sunlight, water, and carbon dioxide in photosynthesis.",
+          skills: "Construct a balanced chemical reaction equation diagram for photosynthesis in a group setup.",
+          attitude: "Demonstrate stewardship for green plants and environmental conservation."
+        },
+        experiences: {
+          hook: "Present two potted plants—one healthy green plant kept in sunlight, and one wilted yellow plant kept in a dark closet for 5 days. Ask: 'What makes the first plant thrive and create its own nourishment?'",
+          iDo: "Teacher presents an interactive diagram of the chloroplast, showing how sunlight splits water (H2O) and converts CO2 into glucose (C6H12O6) and Oxygen (O2).",
+          weDo: "Students work in pairs to arrange word-card formula pieces (Sunlight + Water + CO2 → Glucose + Oxygen) into the correct sequence on their tables.",
+          youDo: "Learners individually complete a flow chart tracing how light energy transforms into chemical energy in plant leaves.",
+          diffA: "Fill in missing key terms on a guided diagram of photosynthesis with vocabulary helper cards.",
+          diffB: "Construct a complete poster diagram showing light-dependent and light-independent reactions.",
+          diffC: "Predict the environmental impact if deforestation drastically cuts local plant photosynthesis rates.",
+          resources: "Potted plant specimens, Chloroplast visual diagram, Vocabulary flashcards, Activity worksheets, Manila paper & markers."
+        },
+        assessment: {
+          formative: "5-item short check quiz & exit ticket: 'Write the overall chemical equation for photosynthesis and name the primary pigment that absorbs light.'",
+          hots: [
+            "Why would placing an aquatic plant under green-filtered light slow down oxygen bubble production?",
+            "How does deforestation directly affect global oxygen supply through the lens of cellular photosynthesis?"
+          ],
+          rubric: "Diagram Accuracy (40%), Scientific Explanation (30%), Group Collaboration (20%), Neatness & Timeliness (10%)."
+        },
+        waysForward: {
+          synthesis: "Learners summarize in 3 key sentences: Plants convert radiant solar energy into chemical energy stored in sugar, releasing vital oxygen as a byproduct.",
+          reflection: "90% of learners achieved mastery in diagram identification; 10% require additional guided practice on chemical equations.",
+          remediation: "Provide guided matching sheet connecting inputs (Water, Light, CO2) with outputs (Glucose, O2) for students below 75% score.",
+          enrichment: "Research home indoor plants that are highly effective at absorbing indoor air pollutants overnight."
+        }
+      },
+
+      math10: {
+        schoolName: "Rizal High School",
+        teacherName: "Juan P. Dela Cruz, Teacher III",
+        gradeLevel: "Grade 10",
+        subject: "Mathematics",
+        quarterWeek: "Quarter 1 - Week 2",
+        duration: "60 Minutes",
+        topic: "Solving Quadratic Equations using the Quadratic Formula",
+        learningCompetency: "M10AL-Ia-b-1: Solves quadratic equations by: (a) extracting square roots; (b) factoring; (c) completing the square; and (d) using the quadratic formula.",
+        contentStandard: "Demonstrates understanding of key concepts of quadratic equations and inequalities.",
+        performanceStandard: "Is able to investigate mathematical relationships and solve real-life problems involving quadratic equations.",
+        learnerContext: "Hands-On & Group Oriented",
+        teachingStrategy: "Gradual Release (I Do, We Do, You Do)",
+        intentions: {
+          knowledge: "Identify the quadratic formula x = (-b ± √(b² - 4ac)) / 2a and define values of a, b, and c.",
+          skills: "Solve quadratic equations accurately using the formula step-by-step.",
+          attitude: "Appreciate perseverance when tackling complex multi-step algebraic procedures."
+        },
+        experiences: {
+          hook: "Display a arched projectile trajectory of a basketball shoot. Ask: 'How can mathematics predict the exact landing spot of the ball?'",
+          iDo: "Teacher models solving 2x² + 5x - 3 = 0 step-by-step using the quadratic formula on the board.",
+          weDo: "Guided board work where student pairs identify a, b, and c values and calculate the discriminant (b² - 4ac).",
+          youDo: "Students independently solve 3 quadratic equations of varying difficulty levels.",
+          diffA: "Solve quadratic equations where a = 1 with formula template worksheets provided.",
+          diffB: "Solve standard quadratic equations requiring rearrangement into ax² + bx + c = 0 first.",
+          diffC: "Formulate a quadratic equation from a real-world area problem and solve using the formula.",
+          resources: "Graphing paper, Scientific calculators, Algebra tiles, Worksheet sets."
+        },
+        assessment: {
+          formative: "3-item formative seatwork solving x² - 4x - 5 = 0 and 2x² - 3x + 1 = 0.",
+          hots: [
+            "What does a negative discriminant (b² - 4ac < 0) reveal about the nature of the roots in real-world contexts?",
+            "How would you verify if your solutions are correct without re-doing the quadratic formula?"
+          ],
+          rubric: "Algorithmic Precision (50%), Proper Substitution (30%), Final Answer Verification (20%)."
+        },
+        waysForward: {
+          synthesis: "Quadratic formula solves any quadratic equation ax² + bx + c = 0 by substituting coefficients a, b, and c into x = (-b ± √(b² - 4ac)) / 2a.",
+          reflection: "85% of learners successfully computed real roots; 15% struggled with negative signs in b² - 4ac.",
+          remediation: "Conduct targeted drill on multiplying negative numbers and calculating square roots.",
+          enrichment: "Investigate how the discriminant determines whether roots are real, equal, or complex."
+        }
+      },
+
+      english7: {
+        schoolName: "San Jose National High School",
+        teacherName: "Elena R. Gomez, Teacher II",
+        gradeLevel: "Grade 7",
+        subject: "English",
+        quarterWeek: "Quarter 2 - Week 1",
+        duration: "60 Minutes",
+        topic: "Active and Passive Voice in Informative Writing",
+        learningCompetency: "EN7G-III-h-3: Use the passive and active voice meaningfully in varied contexts.",
+        contentStandard: "Demonstrates understanding of grammatical structures for clear informative writing.",
+        performanceStandard: "Transfers learning by writing an objective news bulletin using appropriate voice.",
+        learnerContext: "Mixed Readiness & Visual Learners",
+        teachingStrategy: "4As Method (DepEd Standard)",
+        intentions: {
+          knowledge: "Distinguish between active and passive sentences based on subject-verb-object relationships.",
+          skills: "Convert active sentences to passive voice and vice-versa in news report passages.",
+          attitude: "Value clarity and objectivity when reporting information."
+        },
+        experiences: {
+          hook: "Show two headlines: 'Typhoon Damaged the Bridge' vs 'The Bridge Was Damaged by the Typhoon'. Ask which sentence emphasizes the receiver of action.",
+          iDo: "Teacher explains sentence structures: Active (Subject + Verb + Object) vs Passive (Object + be + Past Participle + by Subject).",
+          weDo: "Class converts 5 active news sentences into passive voice together on the digital presentation.",
+          youDo: "Students complete a sentence conversion task sheet independently.",
+          diffA: "Identify whether sample sentences are active or passive using color-coded cards.",
+          diffB: "Rewrite active sentence prompts into passive voice for journalistic context.",
+          diffC: "Compose a short 4-sentence news paragraph utilizing passive voice for objective emphasis.",
+          resources: "Newspaper clippings, Sentence strip cards, Manila paper, Visual projector."
+        },
+        assessment: {
+          formative: "Short 5-question quiz converting sentences between active and passive voice.",
+          hots: [
+            "Why do news reporters intentionally use passive voice when the doer of the action is unknown or confidential?",
+            "How does changing from active to passive voice alter the tone of a formal report?"
+          ],
+          rubric: "Grammatical Accuracy (50%), Sentence Conversion Rules (30%), Contextual Appropriateness (20%)."
+        },
+        waysForward: {
+          synthesis: "Active voice highlights the doer of the action, while passive voice shifts focus to the receiver or result of the action.",
+          reflection: "Most students grasped active voice easily; passive past participle verbs required extra reinforcement.",
+          remediation: "Provide auxiliary verb chart (was/were/is/are + past participle) for peer tutoring session.",
+          enrichment: "Find 3 examples of passive voice in local English newspaper articles and explain why passive voice was chosen."
+        }
+      },
+
+      esp5: {
+        schoolName: "Central Elementary School",
+        teacherName: "Ana Marie V. Cruz, Master Teacher II",
+        gradeLevel: "Grade 5",
+        subject: "Edukasyon sa Pagpapakatao",
+        quarterWeek: "Quarter 1 - Week 4",
+        duration: "50 Minutes",
+        topic: "Pagpapakita ng Paggalang sa Opinyon ng Iba",
+        learningCompetency: "EsP5PKP-Ig-34: Nakaalala at nakapagpapakita ng paggalang sa ideya o opinyon ng kapwa.",
+        contentStandard: "Naipamamalas ang pag-unawa sa kahalagahan ng paggalang sa sarili at sa kapwa.",
+        performanceStandard: "Naisasagawa ang maayos na pakikipagtalastasan nang may paggalang sa opinyon ng iba.",
+        learnerContext: "Hands-On & Group Oriented",
+        teachingStrategy: "4As Method (DepEd Standard)",
+        intentions: {
+          knowledge: "Naipaliliwanag ang kahalagahan ng pakikinig at paggalang sa iba't ibang opinyon.",
+          skills: "Naisasadula ang tamang pakikipag-usap at pagtanggap ng magkakaibang kuro-kuro.",
+          attitude: "Nagpapakita ng pagiging mahinahon at bukas ang isipan sa talakayan."
+        },
+        experiences: {
+          hook: "Magpakita ng larawan ng dalawang batang nag-aaway dahil sa magkaibang gustong laro. Itanong: 'Ano ang dapat nilang gawin upang magkasundo?'",
+          iDo: "Ipaliwanag ng guro ang konsepto ng 'Agree to Disagree' at ang mga magagalang na pananalita tulad ng 'Gumagalang ako sa iyong opinyon, ngunit...'",
+          weDo: "Pangkatang talakayan kung saan magbabahagi ang bawat isa ng kanilang paboritong paksa at magsanay sa magalang na pagtugon.",
+          youDo: "Pagsagot sa tsart ng tamang reaksyon sa mga sitwasyong may magkaibang opinyon.",
+          diffA: "Pagtukoy sa mga magagalang na salita mula sa pagpipilian.",
+          diffB: "Pagsulat ng maikling diyalogo ng dalawang taong may magkaibang opinyon.",
+          diffC: "Paghahanda ng isang maikling dula-dulaan na nagpapakita ng maayos na pagresolba ng alitan.",
+          resources: "Mga larawan ng sitwasyon, Dialogue cards, Tsart ng magagalang na pananalita."
+        },
+        assessment: {
+          formative: "Pagsusuri sa 5 sitwasyon kung ito ba ay nagpapakita ng PAGGALANG o HINDI PAGGALANG.",
+          hots: [
+            "Bakit mahalagang igalang ang opinyon ng iba kahit na ito ay salungat sa iyong sariling paniniwala?",
+            "Paano mo mapapanatili ang kapayapaan sa inyong silid-aralan kapag nagkakaroon ng pangkatang debate?"
+          ],
+          rubric: "Nilalaman ng Sagot (40%), Wastong Pananalita (30%), Partisipasyon sa Gawain (30%)."
+        },
+        waysForward: {
+          synthesis: "Ang paggalang sa opinyon ng iba ay nagdudulot ng kapayapaan, pagkakaunawaan, at mabuting samahan sa lipunan.",
+          reflection: "95% ng mga mag-aaral ay nakipagbahagi nang may kagalakan at paggalang.",
+          remediation: "Pagpapabasa ng maikling kwento tungkol sa pagkakaibigan at pagkilala sa magandang aral nito.",
+          enrichment: "Gumawa ng isang slogan tungkol sa 'Paggalang sa Kapwa: Daan sa Kapayapaan'."
+        }
+      },
+
+      ap9: {
+        schoolName: "Laguna National High School",
+        teacherName: "Ramon T. Bautista, Teacher III",
+        gradeLevel: "Grade 9",
+        subject: "Araling Panlipunan",
+        quarterWeek: "Quarter 2 - Week 3",
+        duration: "60 Minutes",
+        topic: "Konsepto ng Suplay at Salik na Nakaaapekto Rito",
+        learningCompetency: "AP9MYK-IIc-5: Natatalakay ang konsepto ng suplay at ang mga salik na nakaaapekto rito sa pamilihan.",
+        contentStandard: "Naipamamalas ang pag-unawa sa mga pangunahing konsepto ng Ekonomiks bilang batayan ng matalinong pamumuhay.",
+        performanceStandard: "Naisasagawa ang kritikal na pagsusuri sa mga pagbabago ng suplay sa lokal na pamilihan.",
+        learnerContext: "ICT-Integrated & Tech-Enabled",
+        teachingStrategy: "Gradual Release (I Do, We Do, You Do)",
+        intentions: {
+          knowledge: "Naipaliliwanag ang Batas ng Suplay at ang ugnayan ng presyo at dami ng suplay.",
+          skills: "Naisasalarawan ang kurba ng suplay (supply curve) batay sa talahanayan ng suplay.",
+          attitude: "Naipapakita ang pagiging matalinong negosyante o mamimili sa harap ng pagbabago ng presyo."
+        },
+        experiences: {
+          hook: "Magpakita ng larawan ng nagtataasang presyo ng sibuyas sa pamilihan. Itanong: 'Bakit nagbabago ang dami ng paninda kapag tumataas ang presyo?'",
+          iDo: "Pagtatalakay ng guro sa Batas ng Suplay (Ceteris Paribus) at pag-demonstrate ng pagguhit ng Supply Curve.",
+          weDo: "Pangkatang pagsagot sa Supply Schedule at pagplot ng mga puntos sa supply graph.",
+          youDo: "Indibidwal na pagsusuri sa 3 magkakaibang scenario at pagtukoy kung tataas o bababa ang suplay.",
+          diffA: "Pagtukoy kung TATAAS o BABABA ang suplay batay sa ibinigay na larawan.",
+          diffB: "Paggawa ng Supply Curve mula sa talahanayan ng presyo at dami.",
+          diffC: "Pagsusuri sa epekto ng bagyo at teknolohiya sa kabuuang suplay ng produktong agrikultural.",
+          resources: "Graphing board, Visual charts ng Supply Curve, Worksheet ng Ekonomiks."
+        },
+        assessment: {
+          formative: "5-item na maikling pagsusulit sa pagguhit ng Supply Curve at pagkilala sa mga salik tulad ng Teknolohiya at Halaga ng Produksyon.",
+          hots: [
+            "Paano nakatutulong ang modernong teknolohiya sa pagtaas ng suplay kahit hindi nagbabago ang presyo?",
+            "Ano ang maaaring mangyari sa lokal na ekonomiya kapag nagkaroon ng hoarding o pagtatago ng suplay?"
+          ],
+          rubric: "Wastong Graphing (40%), Pagsusuri sa Salik (40%), Kalinisan ng Gawa (20%)."
+        },
+        waysForward: {
+          synthesis: "Ayon sa Batas ng Suplay, may direktang ugnayan ang presyo at dami ng suplay: kapag tumataas ang presyo, tumataas din ang dami ng suplay.",
+          reflection: "Naging aktibo ang mga mag-aaral sa pag-uugnay ng paksa sa totoong buhay sa palengke.",
+          remediation: "Magbigay ng karagdagang pagsasanay sa pag-plot ng puntos sa graph.",
+          enrichment: "Magsaliksik hinggil sa epekto ng importasyon sa lokal na suplay ng bigas."
+        }
+      }
+    };
+
+    // CURRENT APP STATE
+    let activePlanData = JSON.parse(JSON.stringify(PRESETS.science8));
+    let isQuickEditActive = false;
+
+    // INITIALIZATION ON LOAD
+    window.addEventListener('DOMContentLoaded', () => {
+      loadSavedApiKey();
+      renderDocumentPreview(activePlanData);
+    });
+
+    // RENDER DATA TO DOCUMENT PREVIEW SHEET
+    function renderDocumentPreview(data) {
+      activePlanData = data;
+
+      // Header fields
+      document.getElementById('prevSchool').textContent = document.getElementById('schoolName').value || data.schoolName;
+      document.getElementById('prevTeacher').textContent = document.getElementById('teacherName').value || data.teacherName;
+      document.getElementById('prevGrade').textContent = document.getElementById('gradeLevel').value || data.gradeLevel;
+      document.getElementById('prevSubject').textContent = document.getElementById('subject').value || data.subject;
+      document.getElementById('prevQuarter').textContent = document.getElementById('quarterWeek').value || data.quarterWeek;
+      document.getElementById('prevDuration').textContent = document.getElementById('duration').value || data.duration;
+      document.getElementById('prevTopic').textContent = document.getElementById('topic').value || data.topic;
+      document.getElementById('sigTeacher').textContent = document.getElementById('teacherName').value || data.teacherName;
+
+      // Section I: Intentions
+      document.getElementById('prevContentStandard').textContent = document.getElementById('contentStandard').value || data.contentStandard;
+      document.getElementById('prevPerformanceStandard').textContent = document.getElementById('performanceStandard').value || data.performanceStandard;
+      document.getElementById('prevCompetency').textContent = document.getElementById('learningCompetency').value || data.learningCompetency;
+      document.getElementById('prevK').textContent = data.intentions.knowledge;
+      document.getElementById('prevS').textContent = data.intentions.skills;
+      document.getElementById('prevA').textContent = data.intentions.attitude;
+
+      // Section II: Learning Experiences
+      document.getElementById('prevHook').textContent = data.experiences.hook;
+      document.getElementById('prevIDo').textContent = data.experiences.iDo;
+      document.getElementById('prevWeDo').textContent = data.experiences.weDo;
+      document.getElementById('prevYouDo').textContent = data.experiences.youDo;
+
+      // Render Differentiated Group Activities
+      const diffGroupEl = document.getElementById('prevDiffGroup');
+      diffGroupEl.innerHTML = `
+        <div class="bg-slate-50 p-2.5 rounded border border-slate-300">
+          <span class="font-bold text-slate-900 block border-b pb-1 mb-1">Group A (Support Tier)</span>
+          <p class="text-slate-700">${data.experiences.diffA || 'Guided activity with vocabulary scaffolding.'}</p>
+        </div>
+        <div class="bg-slate-50 p-2.5 rounded border border-slate-300">
+          <span class="font-bold text-slate-900 block border-b pb-1 mb-1">Group B (Core Tier)</span>
+          <p class="text-slate-700">${data.experiences.diffB || 'Standard concept diagram and process mapping.'}</p>
+        </div>
+        <div class="bg-slate-50 p-2.5 rounded border border-slate-300">
+          <span class="font-bold text-slate-900 block border-b pb-1 mb-1">Group C (Extension Tier)</span>
+          <p class="text-slate-700">${data.experiences.diffC || 'Real-world application and evaluation task.'}</p>
+        </div>
+      `;
+
+      document.getElementById('prevResources').textContent = data.experiences.resources;
+
+      // Section III: Assessment
+      document.getElementById('prevFormativeCheck').textContent = data.assessment.formative;
+      
+      const hotsList = Array.isArray(data.assessment.hots) ? data.assessment.hots : [data.assessment.hots];
+      document.getElementById('prevHots').innerHTML = hotsList.map(q => `<li class="mb-1">${q}</li>`).join('');
+      document.getElementById('prevRubric').textContent = data.assessment.rubric;
+
+      // Section IV: Ways Forward
+      document.getElementById('prevSynthesis').textContent = data.waysForward.synthesis;
+      document.getElementById('prevReflection').textContent = data.waysForward.reflection;
+      document.getElementById('prevRemediation').textContent = data.waysForward.remediation;
+      document.getElementById('prevEnrichment').textContent = data.waysForward.enrichment;
+
+      // Re-apply inline edit settings if edit mode was active
+      if (isQuickEditActive) {
+        setEditableState(true);
+      }
+    }
+
+    // LOAD PRESET DATA INTO FORM & PREVIEW
+    function loadPreset(key) {
+      if (!PRESETS[key]) return;
+      const preset = PRESETS[key];
+
+      document.getElementById('schoolName').value = preset.schoolName;
+      document.getElementById('teacherName').value = preset.teacherName;
+      document.getElementById('gradeLevel').value = preset.gradeLevel;
+      document.getElementById('subject').value = preset.subject;
+      document.getElementById('quarterWeek').value = preset.quarterWeek;
+      document.getElementById('duration').value = preset.duration;
+      document.getElementById('topic').value = preset.topic;
+      document.getElementById('learningCompetency').value = preset.learningCompetency;
+      document.getElementById('contentStandard').value = preset.contentStandard;
+      document.getElementById('performanceStandard').value = preset.performanceStandard;
+      document.getElementById('learnerContext').value = preset.learnerContext;
+      document.getElementById('teachingStrategy').value = preset.teachingStrategy;
+
+      renderDocumentPreview(preset);
+      showToast(`Loaded ${preset.subject} (${preset.gradeLevel}) Preset Template!`);
+    }
+
+    // CLEAR FORM INPUTS
+    function resetForm() {
+      document.getElementById('ilawForm').reset();
+      document.getElementById('presetSelector').value = "";
+      showToast("Form reset to default.");
+    }
+
+    // GENERATE LESSON PLAN HANDLER (API vs FALLBACK ENGINE)
+    async function handleGenerate(e) {
+      e.preventDefault();
+      
+      const btn = document.getElementById('generateBtn');
+      const btnText = document.getElementById('btnText');
+      const btnIcon = document.getElementById('btnIcon');
+
+      // Set Loading State
+      btn.disabled = true;
+      btnText.textContent = "AI Generating ILAW Plan...";
+      btnIcon.className = "fa-solid fa-spinner fa-spin";
+
+      const apiKey = localStorage.getItem('gemini_api_key') || '';
+      const topic = document.getElementById('topic').value;
+      const subject = document.getElementById('subject').value;
+      const grade = document.getElementById('gradeLevel').value;
+      const competency = document.getElementById('learningCompetency').value;
+      const context = document.getElementById('learnerContext').value;
+      const strategy = document.getElementById('teachingStrategy').value;
+
+      try {
+        let generatedPlan;
+
+        if (apiKey && apiKey.trim().length > 10) {
+          // USE GEMINI REST API CALL
+          generatedPlan = await callGeminiAPI(apiKey, { topic, subject, grade, competency, context, strategy });
+          showToast("✨ Successfully generated plan with Gemini 3 AI!");
+        } else {
+          // FALLBACK SMART GENERATOR ENGINE CLIENT-SIDE
+          await new Promise(r => setTimeout(r, 800)); // Brief simulated AI drafting pause
+          generatedPlan = generateFallbackPlan({ topic, subject, grade, competency, context, strategy });
+          showToast("⚡ Generated DepEd ILAW Plan (Auto Engine active)!");
+        }
+
+        renderDocumentPreview(generatedPlan);
+
+      } catch (err) {
+        console.error("Gemini API Error, switching to internal generator engine:", err);
+        const fallback = generateFallbackPlan({ topic, subject, grade, competency, context, strategy });
+        renderDocumentPreview(fallback);
+        showToast("Generated lesson plan using fallback engine.");
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = "Generate ILAW Lesson Plan";
+        btnIcon.className = "fa-solid fa-wand-magic-sparkles";
+      }
+    }
+
+    // GEMINI 3 FLASH REST API CALL
+    async function callGeminiAPI(apiKey, inputs) {
+      const model = "gemini-3-flash-preview";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+      const promptText = `Act as a DepEd Master Teacher. Generate a complete, highly structured ILAW Lesson Plan (Intentions, Learning Experiences, Assessment, Ways Forward) in JSON format for:
+- Topic: ${inputs.topic}
+- Subject: ${inputs.subject}
+- Grade Level: ${inputs.grade}
+- Learning Competency: ${inputs.competency}
+- Learner Context: ${inputs.context}
+- Teaching Strategy: ${inputs.strategy}`;
+
+      const systemPrompt = "Output ONLY valid JSON matching this exact structure keys: intentions { knowledge, skills, attitude }, experiences { hook, iDo, weDo, youDo, diffA, diffB, diffC, resources }, assessment { formative, hots (array of 2 strings), rubric }, waysForward { synthesis, reflection, remediation, enrichment }.";
+
+      const payload = {
+        contents: [{ parts: [{ text: promptText }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+        generationConfig: {
+          responseMimeType: "application/json"
+        }
+      };
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        throw new Error(`Gemini API Error HTTP ${response.status}`);
+      }
+
+      const result = await response.json();
+      const rawJsonText = result?.candidates?.[0]?.content?.parts?.[0]?.text;
+      
+      if (!rawJsonText) {
+        throw new Error("Invalid API response format");
+      }
+
+      const parsed = JSON.parse(rawJsonText);
+      return {
+        schoolName: document.getElementById('schoolName').value,
+        teacherName: document.getElementById('teacherName').value,
+        gradeLevel: inputs.grade,
+        subject: inputs.subject,
+        quarterWeek: document.getElementById('quarterWeek').value,
+        duration: document.getElementById('duration').value,
+        topic: inputs.topic,
+        learningCompetency: inputs.competency,
+        contentStandard: document.getElementById('contentStandard').value,
+        performanceStandard: document.getElementById('performanceStandard').value,
+        intentions: parsed.intentions || {},
+        experiences: parsed.experiences || {},
+        assessment: parsed.assessment || {},
+        waysForward: parsed.waysForward || {}
+      };
+    }
+
+    // CLIENT-SIDE SMART FALLBACK GENERATOR ENGINE
+    function generateFallbackPlan(inputs) {
+      return {
+        schoolName: document.getElementById('schoolName').value || "Mabini National High School",
+        teacherName: document.getElementById('teacherName').value || "Teacher Name",
+        gradeLevel: inputs.grade,
+        subject: inputs.subject,
+        quarterWeek: document.getElementById('quarterWeek').value || "Quarter 1 - Week 3",
+        duration: document.getElementById('duration').value || "60 Minutes",
+        topic: inputs.topic,
+        learningCompetency: inputs.competency,
+        contentStandard: document.getElementById('contentStandard').value || `Demonstrate core mastery of key concepts in ${inputs.topic}.`,
+        performanceStandard: document.getElementById('performanceStandard').value || `Apply ${inputs.topic} concepts to practical real-world scenarios.`,
+        intentions: {
+          knowledge: `Explain key principles and foundational elements of ${inputs.topic}.`,
+          skills: `Execute guided tasks and construct graphical/textual solutions regarding ${inputs.topic}.`,
+          attitude: `Demonstrate active participation, inquiry mindset, and collaboration during group tasks.`
+        },
+        experiences: {
+          hook: `Begin with an engaging query: "How does ${inputs.topic} affect our daily decisions or surroundings?" Display sample visual stimulus or real-life artifact.`,
+          iDo: `Teacher explicitly explains the core concepts of ${inputs.topic} using step-by-step visual modeling and clear real-world examples.`,
+          weDo: `In pairs, students analyze a guided practice exercise applying ${inputs.topic} rules with teacher facilitation.`,
+          youDo: `Students individually answer 3 check-for-understanding practice problems on their activity sheets.`,
+          diffA: `Support Tier: Guided worksheets with word banks and step-by-step scaffolding prompts.`,
+          diffB: `Core Tier: Standard problem-solving exercises requiring independent concept execution.`,
+          diffC: `Extension Tier: Advanced case analysis or creative application synthesis challenge.`,
+          resources: `Textbook references, Activity worksheets, Visual presentation slides, Manila paper & markers.`
+        },
+        assessment: {
+          formative: `5-item formative evaluation ticket assessing knowledge recall and direct application of ${inputs.topic}.`,
+          hots: [
+            `How would you evaluate the effectiveness of ${inputs.topic} principles when applied under non-standard conditions?`,
+            `What creative alternative strategy could be devised to solve problems related to ${inputs.topic}?`
+          ],
+          rubric: `Accuracy & Correctness (40%), Methodological Clarity (30%), Presentation & Neatness (20%), Punctuality (10%).`
+        },
+        waysForward: {
+          synthesis: `Learners generalize: ${inputs.topic} provides critical understanding necessary for mastering ${inputs.subject} competencies.`,
+          reflection: `85% of learners met or exceeded the 75% mastery benchmark in the formative check.`,
+          remediation: `Provide supplementary guided peer-tutoring activity sheet for learners needing remediation.`,
+          enrichment: `Task advanced learners to research real-world career applications utilizing ${inputs.topic}.`
+        }
+      };
+    }
+
+    // EXPORT TO WORD (.DOCX) FILE
+    async function exportToWord() {
+      const topicName = document.getElementById('prevTopic').textContent || "Lesson_Plan";
+      const cleanFileName = `ILAW_Lesson_Plan_${topicName.replace(/[^a-zA-Z0-9]/g, '_')}.docx`;
+
+      // Check if docx library is loaded
+      if (window.docx) {
+        try {
+          const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel } = window.docx;
+
+          const createCell = (text, isHeader = false, colSpan = 1, bg = "FFFFFF") => {
+            return new TableCell({
+              children: [
+                new Paragraph({
+                  children: [
+                    new TextRun({
+                      text: text || "",
+                      bold: isHeader,
+                      size: isHeader ? 22 : 20,
+                      font: "Calibri",
+                      color: isHeader ? "0F172A" : "334155"
+                    })
+                  ],
+                  spacing: { before: 80, after: 80 }
+                })
+              ],
+              columnSpan: colSpan,
+              shading: { fill: bg },
+              margins: { top: 100, bottom: 100, left: 150, right: 150 }
+            });
+          };
+
+          const doc = new Document({
+            sections: [{
+              properties: {},
+              children: [
+                new Paragraph({
+                  text: "REPUBLIC OF THE PHILIPPINES • DEPARTMENT OF EDUCATION",
+                  heading: HeadingLevel.HEADING_3,
+                  alignment: AlignmentType.CENTER
+                }),
+                new Paragraph({
+                  text: "ILAW LESSON PLAN MATRIX",
+                  heading: HeadingLevel.HEADING_1,
+                  alignment: AlignmentType.CENTER,
+                  spacing: { after: 200 }
+                }),
+
+                new Table({
+                  width: { size: 100, type: WidthType.PERCENTAGE },
+                  rows: [
+                    new TableRow({
+                      children: [
+                        createCell(`School: ${document.getElementById('prevSchool').textContent}\nTeacher: ${document.getElementById('prevTeacher').textContent}\nQuarter/Week: ${document.getElementById('prevQuarter').textContent}`, false, 1, "F1F5F9"),
+                        createCell(`Grade Level: ${document.getElementById('prevGrade').textContent}\nLearning Area: ${document.getElementById('prevSubject').textContent}\nDuration: ${document.getElementById('prevDuration').textContent}`, false, 1, "F1F5F9")
+                      ]
+                    }),
+                    new TableRow({
+                      children: [createCell(`LESSON TOPIC: ${document.getElementById('prevTopic').textContent}`, true, 2, "FEF3C7")]
+                    }),
+                    new TableRow({
+                      children: [createCell("I. INTENTIONS (Layunin)", true, 2, "DBEAFE")]
+                    }),
+                    new TableRow({
+                      children: [
+                        createCell("Standards & Competency", true, 1, "F8FAFC"),
+                        createCell(`Content Standard: ${document.getElementById('prevContentStandard').textContent}\n\nPerformance Standard: ${document.getElementById('prevPerformanceStandard').textContent}\n\nLearning Competency: ${document.getElementById('prevCompetency').textContent}`, false, 1)
+                      ]
+                    }),
+                    new TableRow({
+                      children: [
+                        createCell("Unpacked Objectives (KSA)", true, 1, "F8FAFC"),
+                        createCell(`• Knowledge (K): ${document.getElementById('prevK').textContent}\n• Skills (S): ${document.getElementById('prevS').textContent}\n• Attitude (A): ${document.getElementById('prevA').textContent}`, false, 1)
+                      ]
+                    }),
+                    new TableRow({
+                      children: [createCell("II. LEARNING EXPERIENCES (Pagkakasunod-sunod ng Aralin)", true, 2, "DCFCE7")]
+                    }),
+                    new TableRow({
+                      children: [
+                        createCell("Pre-Lesson Hook & Motivation", true, 1, "F8FAFC"),
+                        createCell(document.getElementById('prevHook').textContent, false, 1)
+                      ]
+                    }),
+                    new TableRow({
+                      children: [
+                        createCell("Instructional Flow (I Do, We Do, You Do)", true, 1, "F8FAFC"),
+                        createCell(`1. Direct Instruction (I DO):\n${document.getElementById('prevIDo').textContent}\n\n2. Guided Practice (WE DO):\n${document.getElementById('prevWeDo').textContent}\n\n3. Independent Practice (YOU DO):\n${document.getElementById('prevYouDo').textContent}`, false, 1)
+                      ]
+                    }),
+                    new TableRow({
+                      children: [
+                        createCell("Assessment & Resources", true, 2, "F3E8FF")
+                      ]
+                    }),
+                    new TableRow({
+                      children: [
+                        createCell("Formative Assessment & HOTS", true, 1, "F8FAFC"),
+                        createCell(`Formative Check:\n${document.getElementById('prevFormativeCheck').textContent}\n\nHOTS Questions:\n${document.getElementById('prevHots').innerText}`, false, 1)
+                      ]
+                    }),
+                    new TableRow({
+                      children: [createCell("IV. WAYS FORWARD (Pagninilay at Pagpapalawig)", true, 2, "FFEDD5")]
+                    }),
+                    new TableRow({
+                      children: [
+                        createCell("Synthesis & Remediation", true, 1, "F8FAFC"),
+                        createCell(`Synthesis: ${document.getElementById('prevSynthesis').textContent}\n\nReflection: ${document.getElementById('prevReflection').textContent}\n\nRemediation: ${document.getElementById('prevRemediation').textContent}\n\nEnrichment: ${document.getElementById('prevEnrichment').textContent}`, false, 1)
+                      ]
+                    })
+                  ]
+                })
+              ]
+            }]
+          });
+
+          const blob = await Packer.toBlob(doc);
+          saveBlobFile(blob, cleanFileName);
+          showToast("Successfully downloaded Word (.DOCX) file!");
+          return;
+        } catch (e) {
+          console.warn("Native Docx generation error, using HTML fallback export:", e);
+        }
+      }
+
+      // Fallback Word Export via HTML Blob
+      fallbackWordExport(cleanFileName);
+    }
+
+    // FALLBACK WORD BLOB EXPORT
+    function fallbackWordExport(fileName) {
+      const content = document.getElementById('printArea').innerHTML;
+      const html = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><meta charset='utf-8'><title>ILAW Lesson Plan</title>
+        <style>
+          body { font-family: Calibri, sans-serif; font-size: 11pt; }
+          table { border-collapse: collapse; width: 100%; }
+          td, th { border: 1px solid #000; padding: 6px; text-align: left; vertical-align: top; }
+        </style>
+        </head><body>${content}</body></html>
+      `;
+      const blob = new Blob(['\ufeff' + html], { type: 'application/msword' });
+      saveBlobFile(blob, fileName);
+      showToast("Downloaded Editable Word document!");
+    }
+
+    function saveBlobFile(blob, fileName) {
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // PRINT / PDF HANDLER
+    function printDocument() {
+      window.print();
+    }
+
+    // COPY RAW TEXT TO CLIPBOARD
+    function copyDocumentText() {
+      const text = document.getElementById('printArea').innerText;
+      
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(() => {
+          showToast("Lesson plan copied to clipboard!");
+        }).catch(() => {
+          fallbackCopyText(text);
+        });
+      } else {
+        fallbackCopyText(text);
+      }
+    }
+
+    function fallbackCopyText(text) {
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      showToast("Lesson plan copied to clipboard!");
+    }
+
+    // TOGGLE INLINE EDITING MODE ON PREVIEW DOCUMENT
+    function toggleQuickEdit() {
+      isQuickEditActive = !isQuickEditActive;
+      const btnLabel = document.getElementById('quickEditLabel');
+      const container = document.getElementById('printArea');
+
+      if (isQuickEditActive) {
+        container.classList.add('editable-active');
+        btnLabel.textContent = "Done Editing";
+        setEditableState(true);
+        showToast("Inline Edit Enabled! Click any text on the document to edit directly.");
+      } else {
+        container.classList.remove('editable-active');
+        btnLabel.textContent = "Enable Inline Edit";
+        setEditableState(false);
+        showToast("Inline Edit Disabled.");
+      }
+    }
+
+    function setEditableState(enable) {
+      const targets = document.querySelectorAll('#printArea p, #printArea span, #printArea td, #printArea li, #printArea div');
+      targets.forEach(el => {
+        if (el.children.length === 0 || el.tagName === 'P' || el.tagName === 'SPAN' || el.tagName === 'LI') {
+          el.contentEditable = enable ? "true" : "false";
+        }
+      });
+    }
+
+    // API KEY MANAGEMENT
+    function toggleApiKeyModal() {
+      const modal = document.getElementById('apiKeyModal');
+      modal.classList.toggle('hidden');
+    }
+
+    function toggleApiKeyVisibility() {
+      const input = document.getElementById('geminiApiKeyInput');
+      const icon = document.getElementById('eyeIcon');
+      if (input.type === "password") {
+        input.type = "text";
+        icon.className = "fa-solid fa-eye-slash";
+      } else {
+        input.type = "password";
+        icon.className = "fa-solid fa-eye";
+      }
+    }
+
+    function saveApiKey() {
+      const key = document.getElementById('geminiApiKeyInput').value.trim();
+      if (key) {
+        localStorage.setItem('gemini_api_key', key);
+        updateApiKeyStatus(true);
+        showToast("API Key saved successfully!");
+      } else {
+        localStorage.removeItem('gemini_api_key');
+        updateApiKeyStatus(false);
+        showToast("API Key cleared. Auto Engine active.");
+      }
+      toggleApiKeyModal();
+    }
+
+    function loadSavedApiKey() {
+      const key = localStorage.getItem('gemini_api_key');
+      if (key) {
+        document.getElementById('geminiApiKeyInput').value = key;
+        updateApiKeyStatus(true);
+      } else {
+        updateApiKeyStatus(false);
+      }
+    }
+
+    function updateApiKeyStatus(hasKey) {
+      const badge = document.getElementById('apiKeyBadge');
+      const text = document.getElementById('apiStatusText');
+      if (hasKey) {
+        badge.className = "w-2 h-2 rounded-full bg-emerald-400 ml-1";
+        text.textContent = "Ready (Gemini API Active)";
+        text.className = "text-emerald-400 font-medium";
+      } else {
+        badge.className = "w-2 h-2 rounded-full bg-amber-400 ml-1";
+        text.textContent = "Ready (Auto Engine Active)";
+        text.className = "text-amber-400 font-medium";
+      }
+    }
+
+    // TOAST NOTIFICATION UTILITY
+    function showToast(message) {
+      const existing = document.getElementById('toastNotification');
+      if (existing) existing.remove();
+
+      const toast = document.createElement('div');
+      toast.id = 'toastNotification';
+      toast.className = 'fixed bottom-5 right-5 bg-slate-900 text-white border border-slate-700 px-4 py-2.5 rounded-xl shadow-2xl z-50 text-xs flex items-center gap-2 transform transition-all duration-300 translate-y-full opacity-0';
+      toast.innerHTML = `<i class="fa-solid fa-circle-info text-blue-400"></i> <span>${message}</span>`;
+      
+      document.body.appendChild(toast);
+      
+      setTimeout(() => {
+        toast.classList.remove('translate-y-full', 'opacity-0');
+      }, 50);
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-full', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3500);
+    }
+  </script>
+</body>
+</html>
